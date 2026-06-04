@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>TaskFlow — Gestor de Tarefas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:linear-gradient(135deg,#0a0f1e 0%,#0d1b2a 50%,#0a1628 100%);font-family:Georgia,serif;color:#e0eaf5;min-height:100vh;padding-bottom:70px;}
+  input,select{font-family:Georgia,serif;}
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-track{background:#0a0f1e;}
+  ::-webkit-scrollbar-thumb{background:#1a3a5a;border-radius:4px;}
+
+  /* HEADER */
+  .header{background:linear-gradient(90deg,#0d2137,#0a3055);border-bottom:1px solid #1a3a5a;padding:16px 16px 0;position:sticky;top:0;z-index:50;}
+  .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .logo{font-size:18px;font-weight:700;letter-spacing:1px;}
+  .logo-sub{font-size:10px;color:#8899aa;letter-spacing:2px;margin-top:2px;}
+  .btn-new{background:#00D4AA;color:#0a0f1e;border:none;border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:1px;}
+  .btn-new.cancel{background:#FF6B6B;}
+  .tabs{display:flex;gap:4px;}
+  .tab{background:transparent;color:#8899aa;border:none;border-bottom:2px solid transparent;padding:8px 14px;font-size:13px;cursor:pointer;letter-spacing:1px;font-family:Georgia,serif;transition:all 0.2s;}
+  .tab.active{color:#00D4AA;border-bottom-color:#00D4AA;font-weight:700;}
+
+  /* CONTENT */
+  .content{max-width:680px;margin:0 auto;padding:0 14px;}
+
+  /* FORM */
+  .form-box{background:#0d1b2a;border:1px solid #1a3a5a;border-radius:12px;padding:18px;margin-top:16px;}
+  .form-title{font-size:13px;font-weight:600;color:#00D4AA;margin-bottom:14px;letter-spacing:1px;}
+  .form-input{width:100%;background:#101e2e;border:1px solid #1a3a5a;border-radius:8px;padding:10px 14px;color:#e0eaf5;font-size:14px;outline:none;margin-bottom:10px;}
+  .form-input::placeholder{color:#4a5a6a;}
+  .form-row{display:flex;gap:10px;margin-bottom:10px;}
+  .form-row select,.form-row input{flex:1;background:#101e2e;border:1px solid #1a3a5a;border-radius:8px;padding:10px 12px;color:#e0eaf5;font-size:13px;outline:none;}
+  .form-row select option{background:#0d1b2a;}
+  .btn-add{width:100%;background:#00D4AA;color:#0a0f1e;border:none;border-radius:8px;padding:11px;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:1px;}
+
+  /* CARDS */
+  .stats-row{display:flex;gap:10px;margin-top:16px;}
+  .stat-card{flex:1;background:#0d1b2a;border:1px solid #333;border-radius:10px;padding:10px 6px;text-align:center;}
+  .stat-val{font-size:18px;font-weight:700;font-family:monospace;margin-top:2px;}
+  .stat-lbl{font-size:9px;color:#8899aa;letter-spacing:1px;margin-top:2px;}
+
+  /* PROGRESS */
+  .progress-box{margin-top:14px;background:#0d1b2a;border:1px solid #1a3a5a;border-radius:10px;padding:14px;}
+  .progress-head{display:flex;justify-content:space-between;font-size:12px;color:#8899aa;margin-bottom:8px;}
+  .progress-bar{height:8px;background:#1a3a5a;border-radius:4px;overflow:hidden;}
+  .progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#00D4AA,#6C63FF);transition:width 0.6s ease;}
+
+  /* TASKS */
+  .section-title{font-size:11px;color:#8899aa;letter-spacing:2px;margin:16px 0 10px;}
+  .task-item{background:#0d1b2a;border:1px solid #1a3a5a;border-radius:10px;padding:12px 14px;margin-bottom:9px;display:flex;align-items:center;gap:10px;}
+  .task-item.done{background:#0d1b2a88;border-color:#1a3a5a88;}
+  .task-check{width:18px;height:18px;accent-color:#00D4AA;cursor:pointer;flex-shrink:0;}
+  .task-info{flex:1;min-width:0;}
+  .task-title{font-size:13px;font-weight:600;color:#e0eaf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .task-title.done-txt{color:#8899aa;text-decoration:line-through;}
+  .task-meta{display:flex;gap:8px;margin-top:4px;align-items:center;flex-wrap:wrap;}
+  .tag{font-size:9px;padding:2px 8px;border-radius:20px;letter-spacing:1px;}
+  .task-time{font-size:10px;color:#8899aa;}
+  .btn-timer{background:#00D4AA22;color:#00D4AA;border:none;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;white-space:nowrap;font-family:monospace;}
+  .btn-timer.running{background:#FF6B6B22;color:#FF6B6B;}
+  .btn-del{background:transparent;color:#FF6B6B;border:none;font-size:15px;cursor:pointer;padding:4px;flex-shrink:0;}
+
+  /* OLD TASKS */
+  .old-task{background:#0d1b2a88;border:1px solid #1a3a5a55;border-radius:10px;padding:10px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px;}
+  .old-check{font-size:12px;}
+  .old-title{font-size:12px;color:#8899aa;}
+  .old-meta{font-size:10px;color:#4a5a6a;margin-top:2px;}
+
+  /* REPORTS */
+  .circles-row{display:flex;justify-content:space-around;padding:10px 0;}
+  .circle-wrap{text-align:center;}
+  .circle-lbl{font-size:10px;color:#8899aa;letter-spacing:1px;margin-top:6px;}
+  .circle-count{font-size:11px;color:#ccc;margin-top:2px;}
+  .report-card{background:#0d1b2a;border:1px solid #1a3a5a;border-radius:12px;padding:18px;margin-bottom:14px;}
+  .report-title{font-size:11px;letter-spacing:2px;margin-bottom:14px;}
+  .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .metric{background:#101e2e;border-radius:8px;padding:11px 14px;}
+  .metric-lbl{font-size:10px;color:#8899aa;letter-spacing:1px;}
+  .metric-val{font-size:18px;font-weight:700;color:#e0eaf5;font-family:monospace;margin-top:3px;}
+  .cat-row{margin-bottom:9px;}
+  .cat-head{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;}
+  .cat-bar{height:5px;background:#1a3a5a;border-radius:3px;}
+  .cat-fill{height:100%;border-radius:3px;}
+
+  /* CHARTS */
+  .chart-card{background:#0d1b2a;border:1px solid #1a3a5a;border-radius:12px;padding:18px;margin-bottom:14px;}
+  .chart-title{font-size:11px;color:#8899aa;letter-spacing:2px;margin-bottom:14px;}
+  .pie-row{display:flex;align-items:center;gap:14px;}
+  .pie-legend{flex:1;}
+  .pie-leg-item{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+  .pie-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+  .pie-name{font-size:11px;color:#e0eaf5;}
+  .pie-time{font-size:10px;color:#8899aa;}
+
+  /* EMPTY */
+  .empty{text-align:center;padding:36px 20px;color:#4a5a6a;font-size:13px;line-height:1.8;}
+
+  /* HIDDEN */
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div style="max-width:680px;margin:0 auto;">
+    <div class="header-top">
+      <div>
+        <div class="logo">◈ TaskFlow</div>
+        <div class="logo-sub">GESTOR DE TAREFAS</div>
+      </div>
+      <button class="btn-new" id="btnNew" onclick="toggleForm()">+ Nova Tarefa</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('hoje')">Hoje</button>
+      <button class="tab" onclick="switchTab('relatorios')">Relatórios</button>
+      <button class="tab" onclick="switchTab('graficos')">Gráficos</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- FORM -->
+  <div class="form-box hidden" id="formBox">
+    <div class="form-title">NOVA TAREFA</div>
+    <input class="form-input" id="taskTitle" placeholder="Título da tarefa..."/>
+    <div class="form-row">
+      <select id="taskCat">
+        <option>Estudo</option><option>Trabalho</option><option>Exercício</option>
+        <option>Leitura</option><option>Pesquisa</option><option>Outro</option>
+      </select>
+      <input type="date" id="taskDate"/>
+    </div>
+    <button class="btn-add" onclick="addTask()">Adicionar Tarefa</button>
+  </div>
+
+  <!-- TAB: HOJE -->
+  <div id="tab-hoje">
+    <div class="stats-row" id="statsRow"></div>
+    <div class="progress-box">
+      <div class="progress-head">
+        <span>Progresso de hoje</span>
+        <span id="pctToday" style="color:#00D4AA;font-weight:700;">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div class="section-title" id="todayLabel">TAREFAS DE HOJE</div>
+    <div id="todayList"></div>
+    <div class="section-title hidden" id="oldLabel">TAREFAS ANTERIORES</div>
+    <div id="oldList"></div>
+  </div>
+
+  <!-- TAB: RELATÓRIOS -->
+  <div id="tab-relatorios" class="hidden">
+    <div class="report-card" style="margin-top:16px;">
+      <div class="report-title" style="color:#8899aa;">TAXA DE CONCLUSÃO</div>
+      <div class="circles-row" id="circlesRow"></div>
+    </div>
+    <div id="reportDaily"></div>
+    <div id="reportWeekly"></div>
+    <div id="reportMonthly"></div>
+  </div>
+
+  <!-- TAB: GRÁFICOS -->
+  <div id="tab-graficos" class="hidden">
+    <div class="chart-card" style="margin-top:16px;">
+      <div class="chart-title">TAREFAS — ÚLTIMOS 7 DIAS</div>
+      <canvas id="chartBar" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">TEMPO GASTO (min) — ÚLTIMOS 7 DIAS</div>
+      <canvas id="chartLine" height="160"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">TEMPO POR CATEGORIA</div>
+      <div class="pie-row">
+        <canvas id="chartPie" width="150" height="150" style="flex-shrink:0;"></canvas>
+        <div class="pie-legend" id="pieLegend"></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">TENDÊNCIA SEMANAL (% CONCLUSÃO)</div>
+      <canvas id="chartWeekly" height="160"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const COLORS = ["#00D4AA","#FF6B6B","#FFD93D","#6C63FF","#4ECDC4","#FF8E53"];
+const CATS = ["Estudo","Trabalho","Exercício","Leitura","Pesquisa","Outro"];
+
+function today(){ return new Date().toISOString().split("T")[0]; }
+function fmt(min){ const h=Math.floor(min/60),m=min%60; return h>0?`${h}h ${m}m`:`${m}m`; }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+const td = today();
+
+let tasks = JSON.parse(localStorage.getItem("tf_tasks")||"null") || [
+  {id:"1",title:"Estudar Matemática",category:"Estudo",done:true,date:td,timeSpent:90},
+  {id:"2",title:"Preparar relatório de estágio",category:"Trabalho",done:true,date:td,timeSpent:120},
+  {id:"3",title:"Rever exercícios de Física",category:"Pesquisa",done:false,date:td,timeSpent:45},
+  {id:"4",title:"Leitura de livro didático",category:"Leitura",done:true,date:new Date(Date.now()-86400000).toISOString().split("T")[0],timeSpent:60},
+  {id:"5",title:"Exercício físico",category:"Exercício",done:false,date:new Date(Date.now()-86400000).toISOString().split("T")[0],timeSpent:30},
+  {id:"6",title:"Revisão de Química",category:"Estudo",done:true,date:new Date(Date.now()-172800000).toISOString().split("T")[0],timeSpent:75},
+  {id:"7",title:"Preparar slides",category:"Trabalho",done:true,date:new Date(Date.now()-172800000).toISOString().split("T")[0],timeSpent:110},
+];
+function save(){ localStorage.setItem("tf_tasks", JSON.stringify(tasks)); }
+
+let timerState = {running:false, taskId:null, seconds:0, interval:null};
+let activeTab = "hoje";
+let formOpen = false;
+let charts = {};
+
+// Init date
+document.getElementById("taskDate").value = td;
+
+function toggleForm(){
+  formOpen = !formOpen;
+  document.getElementById("formBox").classList.toggle("hidden", !formOpen);
+  const btn = document.getElementById("btnNew");
+  btn.textContent = formOpen ? "✕ Cancelar" : "+ Nova Tarefa";
+  btn.className = "btn-new" + (formOpen ? " cancel" : "");
+}
+
+function addTask(){
+  const title = document.getElementById("taskTitle").value.trim();
+  if(!title) return;
+  tasks.push({id:uid(),title,category:document.getElementById("taskCat").value,done:false,date:document.getElementById("taskDate").value,timeSpent:0});
+  save();
+  document.getElementById("taskTitle").value = "";
+  toggleForm();
+  render();
+}
+
+function toggleTask(id){
+  const t = tasks.find(x=>x.id===id);
+  if(t){ t.done=!t.done; save(); render(); }
+}
+
+function deleteTask(id){
+  tasks = tasks.filter(x=>x.id!==id);
+  if(timerState.taskId===id) stopTimer();
+  save(); render();
+}
+
+function startTimer(id){
+  if(timerState.running && timerState.taskId===id){
+    const mins = Math.floor(timerState.seconds/60);
+    const t = tasks.find(x=>x.id===id);
+    if(t){ t.timeSpent+=mins; save(); }
+    stopTimer(); render();
+  } else {
+    stopTimer();
+    timerState = {running:true,taskId:id,seconds:0,interval:setInterval(()=>{
+      timerState.seconds++;
+      const btn = document.getElementById("timer_"+id);
+      if(btn){ const m=Math.floor(timerState.seconds/60),s=timerState.seconds%60; btn.textContent=`⏹ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`; }
+    },1000)};
+  }
+}
+
+function stopTimer(){
+  if(timerState.interval) clearInterval(timerState.interval);
+  timerState = {running:false,taskId:null,seconds:0,interval:null};
+}
+
+function switchTab(name){
+  activeTab = name;
+  ["hoje","relatorios","graficos"].forEach(t=>{
+    document.getElementById("tab-"+t).classList.toggle("hidden", t!==name);
+    document.querySelectorAll(".tab").forEach((el,i)=>{
+      el.classList.toggle("active", ["hoje","relatorios","graficos"][i]===name);
+    });
+  });
+  render();
+}
+
+/* ---- STATS ---- */
+function getPct(list){ if(!list.length) return 0; return Math.round(list.filter(t=>t.done).length/list.length*100); }
+
+function getWeekStart(){
+  const d=new Date(); d.setDate(d.getDate()-d.getDay()+1); d.setHours(0,0,0,0); return d;
+}
+function getMonthStart(){ const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; }
+
+function getWeekLabel(date){
+  const d=new Date(date); const day=d.getDay(); const diff=d.getDate()-day+(day===0?-6:1);
+  const m=new Date(d.setDate(diff));
+  return m.toLocaleDateString("pt-PT",{day:"2-digit",month:"short"});
+}
+
+/* ---- RENDER ---- */
+function render(){
+  const todayTasks = tasks.filter(t=>t.date===td);
+  const todayDone = todayTasks.filter(t=>t.done).length;
+  const pct = getPct(todayTasks);
+
+  if(activeTab==="hoje") renderHoje(todayTasks, todayDone, pct);
+  if(activeTab==="relatorios") renderReports();
+  if(activeTab==="graficos") renderCharts();
+}
+
+function renderHoje(todayTasks, todayDone, pct){
+  // Stats
+  const colors=["#6C63FF","#00D4AA","#FF6B6B","#FFD93D"];
+  const icons=["📋","✅","⏳","📊"];
+  const labels=["Total","Concluídas","Pendentes","% Taxa"];
+  const vals=[todayTasks.length,todayDone,todayTasks.length-todayDone,pct+"%"];
+  document.getElementById("statsRow").innerHTML = vals.map((v,i)=>`
+    <div class="stat-card" style="border-color:${colors[i]}33;">
+      <div style="font-size:16px;">${icons[i]}</div>
+      <div class="stat-val" style="color:${colors[i]};">${v}</div>
+      <div class="stat-lbl">${labels[i]}</div>
+    </div>`).join("");
+
+  document.getElementById("pctToday").textContent = pct+"%";
+  document.getElementById("progressFill").style.width = pct+"%";
+  document.getElementById("todayLabel").textContent = `TAREFAS DE HOJE — ${todayTasks.length} tarefa(s)`;
+
+  document.getElementById("todayList").innerHTML = todayTasks.length ? todayTasks.map(t=>taskHTML(t,true)).join("") :
+    `<div class="empty">Nenhuma tarefa para hoje.<br>Clica em "+ Nova Tarefa" para começar.</div>`;
+
+  const old = tasks.filter(t=>t.date!==td);
+  if(old.length){
+    document.getElementById("oldLabel").classList.remove("hidden");
+    document.getElementById("oldList").innerHTML = old.slice(0,5).map(t=>`
+      <div class="old-task">
+        <span class="old-check" style="color:${t.done?"#00D4AA":"#FF6B6B"};">${t.done?"✓":"○"}</span>
+        <div>
+          <div class="old-title" style="${t.done?"text-decoration:line-through":""}">${t.title}</div>
+          <div class="old-meta">${t.date} · ${fmt(t.timeSpent)}</div>
+        </div>
+      </div>`).join("");
+  }
+}
+
+function taskHTML(t, withActions){
+  const ci = CATS.indexOf(t.category)%COLORS.length;
+  const isRunning = timerState.running && timerState.taskId===t.id;
+  return `<div class="task-item ${t.done?"done":""}" style="border-left:3px solid ${t.done?"#00D4AA":COLORS[ci]};">
+    <input type="checkbox" class="task-check" ${t.done?"checked":""} onchange="toggleTask('${t.id}')"/>
+    <div class="task-info">
+      <div class="task-title ${t.done?"done-txt":""}">${t.title}</div>
+      <div class="task-meta">
+        <span class="tag" style="background:${COLORS[ci]}22;color:${COLORS[ci]};">${t.category}</span>
+        <span class="task-time">⏱ ${fmt(t.timeSpent)}</span>
+      </div>
+    </div>
+    <button id="timer_${t.id}" class="btn-timer ${isRunning?"running":""}" onclick="startTimer('${t.id}')">
+      ${isRunning?`⏹ ${String(Math.floor(timerState.seconds/60)).padStart(2,"0")}:${String(timerState.seconds%60).padStart(2,"0")}`:"▶ Timer"}
+    </button>
+    <button class="btn-del" onclick="deleteTask('${t.id}')">✕</button>
+  </div>`;
+}
+
+function renderReports(){
+  const weekTasks = tasks.filter(t=>new Date(t.date)>=getWeekStart());
+  const monthTasks = tasks.filter(t=>new Date(t.date)>=getMonthStart());
+  const todayTasks = tasks.filter(t=>t.date===td);
+
+  // Circles
+  const sets = [
+    {pct:getPct(todayTasks),label:"HOJE",done:todayTasks.filter(t=>t.done).length,total:todayTasks.length},
+    {pct:getPct(weekTasks),label:"ESTA SEMANA",done:weekTasks.filter(t=>t.done).length,total:weekTasks.length},
+    {pct:getPct(monthTasks),label:"ESTE MÊS",done:monthTasks.filter(t=>t.done).length,total:monthTasks.length},
+  ];
+  document.getElementById("circlesRow").innerHTML = sets.map(s=>circleHTML(s.pct,s.label,s.done,s.total)).join("");
+
+  // Report cards
+  document.getElementById("reportDaily").innerHTML = reportCard("📅 RELATÓRIO DIÁRIO","#00D4AA",todayTasks);
+  document.getElementById("reportWeekly").innerHTML = reportCard("📆 RELATÓRIO SEMANAL","#FFD93D",weekTasks);
+  document.getElementById("reportMonthly").innerHTML = reportCard("📊 RELATÓRIO MENSAL","#6C63FF",monthTasks,true);
+}
+
+function circleHTML(pct,label,done,total){
+  const r=28,circ=2*Math.PI*r,offset=circ*(1-pct/100);
+  return `<div class="circle-wrap">
+    <svg width="80" height="80" style="transform:rotate(-90deg)">
+      <circle cx="40" cy="40" r="${r}" fill="none" stroke="#1e2a3a" stroke-width="6"/>
+      <circle cx="40" cy="40" r="${r}" fill="none" stroke="#00D4AA" stroke-width="6"
+        stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+    </svg>
+    <div style="margin-top:-52px;font-size:16px;font-weight:700;color:#00D4AA;font-family:monospace;">${pct}%</div>
+    <div class="circle-lbl" style="margin-top:26px;">${label}</div>
+    <div class="circle-count">${done}/${total}</div>
+  </div>`;
+}
+
+function reportCard(title,color,list,withCats){
+  const done=list.filter(t=>t.done).length;
+  const pct=getPct(list);
+  const time=list.reduce((a,b)=>a+b.timeSpent,0);
+  const metrics=[
+    {label:"Tarefas planeadas",val:list.length},
+    {label:"Concluídas",val:done},
+    {label:"Taxa de conclusão",val:pct+"%"},
+    {label:"Tempo total",val:fmt(time)},
+  ];
+  let cats="";
+  if(withCats){
+    cats=`<div style="margin-top:14px;">
+      <div style="font-size:10px;color:#8899aa;letter-spacing:1px;margin-bottom:10px;">POR CATEGORIA</div>
+      ${CATS.map((cat,i)=>{
+        const ct=list.filter(t=>t.category===cat);
+        if(!ct.length) return "";
+        const cd=ct.filter(t=>t.done).length;
+        const cp=ct.length?Math.round(cd/ct.length*100):0;
+        return `<div class="cat-row">
+          <div class="cat-head">
+            <span style="color:${COLORS[i%COLORS.length]}">${cat}</span>
+            <span style="color:#8899aa">${cd}/${ct.length} (${cp}%)</span>
+          </div>
+          <div class="cat-bar"><div class="cat-fill" style="width:${cp}%;background:${COLORS[i%COLORS.length]};"></div></div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }
+  return `<div class="report-card">
+    <div class="report-title" style="color:${color};">${title}</div>
+    <div class="metrics-grid">${metrics.map(m=>`
+      <div class="metric">
+        <div class="metric-lbl">${m.label}</div>
+        <div class="metric-val">${m.val}</div>
+      </div>`).join("")}
+    </div>${cats}
+  </div>`;
+}
+
+function renderCharts(){
+  const last7 = Array.from({length:7},(_,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-(6-i));
+    const key=d.toISOString().split("T")[0];
+    const dt=tasks.filter(t=>t.date===key);
+    return {
+      dia:d.toLocaleDateString("pt-PT",{weekday:"short"}),
+      done:dt.filter(t=>t.done).length,
+      pending:dt.length-dt.filter(t=>t.done).length,
+      time:dt.reduce((a,b)=>a+b.timeSpent,0)
+    };
+  });
+
+  const timeByCat = CATS.map(cat=>({name:cat,min:tasks.filter(t=>t.category===cat).reduce((a,b)=>a+b.timeSpent,0)})).filter(d=>d.min>0);
+
+  const weeks={};
+  tasks.forEach(t=>{
+    const lbl=getWeekLabel(t.date);
+    if(!weeks[lbl]) weeks[lbl]={total:0,done:0};
+    weeks[lbl].total++;
+    if(t.done) weeks[lbl].done++;
+  });
+  const weeklyTrend=Object.entries(weeks).map(([s,v])=>({semana:s,taxa:v.total?Math.round(v.done/v.total*100):0}));
+
+  const tooltip = {
+    plugins:{tooltip:{backgroundColor:"#0d1b2a",borderColor:"#1a3a5a",borderWidth:1,titleColor:"#e0eaf5",bodyColor:"#e0eaf5"}},
+    legend:{labels:{color:"#8899aa",font:{size:11}}}
+  };
+  const axes = (unit)=>({
+    x:{ticks:{color:"#8899aa",font:{size:10}},grid:{color:"#1a3a5a44"},border:{display:false}},
+    y:{ticks:{color:"#8899aa",font:{size:10},...(unit?{callback:v=>v+unit}:{})},grid:{color:"#1a3a5a44"},border:{display:false}}
+  });
+
+  // Bar
+  if(charts.bar) charts.bar.destroy();
+  charts.bar = new Chart(document.getElementById("chartBar"),{
+    type:"bar",
+    data:{labels:last7.map(d=>d.dia),datasets:[
+      {label:"Concluídas",data:last7.map(d=>d.done),backgroundColor:"#00D4AA",borderRadius:4},
+      {label:"Pendentes",data:last7.map(d=>d.pending),backgroundColor:"#FF6B6B",borderRadius:4}
+    ]},
+    options:{responsive:true,plugins:tooltip,scales:axes(),animation:{duration:600}}
+  });
+
+  // Line
+  if(charts.line) charts.line.destroy();
+  charts.line = new Chart(document.getElementById("chartLine"),{
+    type:"line",
+    data:{labels:last7.map(d=>d.dia),datasets:[{label:"Minutos",data:last7.map(d=>d.time),borderColor:"#FFD93D",backgroundColor:"#FFD93D22",pointBackgroundColor:"#FFD93D",borderWidth:2.5,pointRadius:4,tension:0.3}]},
+    options:{responsive:true,plugins:{...tooltip,legend:{display:false}},scales:axes(),animation:{duration:600}}
+  });
+
+  // Pie
+  if(charts.pie) charts.pie.destroy();
+  charts.pie = new Chart(document.getElementById("chartPie"),{
+    type:"doughnut",
+    data:{labels:timeByCat.map(d=>d.name),datasets:[{data:timeByCat.map(d=>d.min),backgroundColor:COLORS.slice(0,timeByCat.length),borderWidth:0,hoverOffset:4}]},
+    options:{responsive:false,plugins:{tooltip:{...tooltip.plugins.tooltip,callbacks:{label:ctx=>`${ctx.label}: ${fmt(ctx.raw)}`}},legend:{display:false}},animation:{duration:600}}
+  });
+  document.getElementById("pieLegend").innerHTML = timeByCat.map((d,i)=>`
+    <div class="pie-leg-item">
+      <div class="pie-dot" style="background:${COLORS[i%COLORS.length]};"></div>
+      <div><div class="pie-name">${d.name}</div><div class="pie-time">${fmt(d.min)}</div></div>
+    </div>`).join("");
+
+  // Weekly trend
+  if(charts.weekly) charts.weekly.destroy();
+  charts.weekly = new Chart(document.getElementById("chartWeekly"),{
+    type:"line",
+    data:{labels:weeklyTrend.map(d=>d.semana),datasets:[{label:"Taxa %",data:weeklyTrend.map(d=>d.taxa),borderColor:"#6C63FF",backgroundColor:"#6C63FF22",pointBackgroundColor:"#6C63FF",borderWidth:2.5,pointRadius:5,tension:0.3}]},
+    options:{responsive:true,plugins:{...tooltip,legend:{display:false}},scales:{...axes("%"),y:{...axes("%").y,min:0,max:100}},animation:{duration:600}}
+  });
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>
